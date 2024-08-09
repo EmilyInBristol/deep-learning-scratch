@@ -4,6 +4,7 @@ from torchvision import datasets, transforms # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 from torch.utils.data import DataLoader # type: ignore
 import torch.optim as optim # type: ignore
+import torch.nn.functional as F # type: ignore
 
 
 ##############linear regression with no active function###############
@@ -104,18 +105,19 @@ def softmax(X):
 	partition = X_exp.sum(1, keepdims=True)
 	return X_exp/partition
 
-class SoftmaxRegressionScratch():
-	def __init__(self, num_inputs, num_outputs) -> None:
-		self.W = torch.normal(0, 0.01, size=(num_inputs, num_outputs), requires_grad=True)
-		self.b = torch.zeros(num_outputs, requires_grad=True)
-
-	def parameters(self):
-		return [self.W, self.b]
+class SoftmaxRegressionScratch(nn.Module):
+	def __init__(self, num_inputs, num_hidden, num_outputs):
+		super(SoftmaxRegressionScratch, self).__init__()
+		self.hidden = nn.Linear(num_inputs, num_hidden)
+		self.output = nn.Linear(num_hidden, num_outputs)
+		self.num_inputs = num_inputs
 	
 	def forward(self, X):
-		X = X.reshape(-1, self.W.shape[0])
-		return softmax(torch.matmul(X, self.W) + self.b)
-
+		X = X.reshape(-1, self.num_inputs)
+		H = F.relu(self.hidden(X))
+		logits = self.output(H)
+		#probabilities = F.softmax(logits, dim=1)
+		return logits
 
 def train_loop():
 	resize = (28, 28)
@@ -125,8 +127,9 @@ def train_loop():
 	val_loader = fashion_mnist.get_dataloader(train=False)
 
 	num_inputs = resize[0] * resize[1]
+	num_hidden = 256
 	num_outputs = 10
-	model = SoftmaxRegressionScratch(num_inputs, num_outputs)
+	model = SoftmaxRegressionScratch(num_inputs, num_hidden, num_outputs)
 
 	criterion = nn.CrossEntropyLoss() 
 	optimizer = optim.SGD(model.parameters(), lr=0.01)
@@ -137,8 +140,6 @@ def train_loop():
 		correct = 0
 		total = 0
 		for X, y in train_loader:
-
-
 			y_hat = model.forward(X)
 			loss = criterion(y_hat, y)
 
