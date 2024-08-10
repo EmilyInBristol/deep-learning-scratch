@@ -86,10 +86,12 @@ class FashionMNIST():
 		return DataLoader(data, self.batch_size, shuffle=train, num_workers=0)
 
 class MLP(nn.Module):
-	def __init__(self, num_inputs, num_hidden, num_outputs):
+	def __init__(self, num_inputs, num_hidden, num_outputs, dropout_prob=0.5):
 		super(MLP, self).__init__()
+		self.dropout_prob = dropout_prob
 		self.net = nn.Sequential(nn.Linear(num_inputs, num_hidden),
 						   nn.ReLU(),
+						   nn.Dropout(dropout_prob),
 						   nn.Linear(num_hidden, num_outputs))
 		
 		self._initialize_weights()
@@ -186,3 +188,19 @@ def train_loop():
 
 
 train_loop()
+
+
+def dropout_layer(X, dropout):
+	assert 0 <= dropout <= 1
+	if dropout == 1: return torch.zeros_like(X)
+	mask = (torch.rand(X.shape) > dropout).float()
+	print(mask)
+	return (X * mask) / (1-dropout)
+
+def test_dropout_layer():
+	X = torch.arange(16, dtype=torch.float32).reshape((2, 8))
+	print(X)
+	print(X.mean().item())
+	a = dropout_layer(X, 0.5)
+	print(a.mean().item())
+
