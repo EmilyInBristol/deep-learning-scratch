@@ -2,6 +2,14 @@ import requests
 import os
 import pandas as pd  # type: ignore
 import hashlib
+import torch # type: ignore
+from torch.utils.data import DataLoader, TensorDataset, random_split # type: ignore
+
+import model
+from model import MLP, train_loop
+import numpy as np # type: ignore
+import torch.nn as nn # type: ignore
+import torch.optim as optim # type: ignore
 
 url_train = 'http://d2l-data.s3-accelerate.amazonaws.com/kaggle_house_pred_train.csv'
 sha1_hash_train = '585e9cc93e70b39160e7921475f9bcd7d31219ce'
@@ -62,15 +70,62 @@ class KaggleHouse():
         features[numeric_features] = features[numeric_features].apply(lambda x: (x-x.mean()) / (x.std()))
         features[numeric_features] = features[numeric_features].fillna(0)
 
+        # conver category to one-hot feature
         features = pd.get_dummies(features, dummy_na=True)
+        # Convert bool columns to float
+        bool_columns = features.select_dtypes(include=['bool']).columns
+        features[bool_columns] = features[bool_columns].astype(float)
 
-        self.train = features[:df_train.shape[0]].copy()
-        self.train[label] = df_train[label]
-        self.val = features[df_train.shape[0]:].copy()
+        # Ensure all features are numeric
+        assert features.dtypes.apply(lambda x: np.issubdtype(x, np.number)).all(), "Not all features are numeric!"
 
-        print(self.train.shape)
-        print(self.val.shape)
+        train_all = features[:df_train.shape[0]].copy()
+        train_all[label] = df_train[label]
+        val_all = features[df_train.shape[0]:].copy()
+
+        # split traindata to train and val data
+        # Shuffle the DataFrame
+        train_all = train_all.sample(frac=1).reset_index(drop=True)
+        train_size = int(0.7 * len(train_all))
+        self.train = train_all[:train_size]
+        self.val = train_all[train_size:]
+        
+
+    def get_dataloader(self, train=True, batch_size=64):
+        data = self.train if train else self.val
+
+        #if train:
+        X = data.drop(columns=['SalePrice']).values
+        y = data['SalePrice'].values
+        y = torch.log(torch.tensor(y, dtype=torch.float32)).reshape(-1, 1)
+        #else:
+        #    X = data.values
+        #    y = None
+
+        X_tensor = torch.tensor(X, dtype=torch.float32)
+        dataset = TensorDataset(X_tensor, y)
+        """
+        if train:
+            dataset = TensorDataset(X_tensor, y)
+        else:
+            dataset = TensorDataset(X_tensor)
+        """
+        return DataLoader(dataset, batch_size=batch_size, shuffle=train, num_workers=0)
 
 
-kh = KaggleHouse()
-kh.preprocess()
+kaggle_house = KaggleHouse()
+kaggle_house.preprocess()
+
+num_epochs = 5
+num_inputs = 330
+num_hidden = 32
+num_outputs = 1
+
+model = MLP(num_inputs, num_hidden, num_outputs)
+criterion = nn.MSELoss()
+optimizer = optim.SGD(model.parameters(), lr=0.01)
+
+train_loader = kaggle_house.get_dataloader(train=True, batch_size=64)
+val_loader = kaggle_house.get_dataloader(train=False, batch_size=64)
+
+train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5)

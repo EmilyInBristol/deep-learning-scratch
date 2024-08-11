@@ -22,52 +22,50 @@ def generate_data():
 	data = SynthesisData(w, b, 10, 2)
 	return data.x[:10], data.y[:10], data.x[10:], data.y[10:]
 
-class MyModel(nn.Module):
-	def __init__(self):
-		super(MyModel, self).__init__()
-		self.linear = nn.Linear(2, 1)
+class LinearRegression(nn.Module):
+	def __init__(self, learning_rate):
+		super(LinearRegression, self).__init__()
+		self.net = nn.LazyLinear(1)
+		self.net.weight.data.normal_(0, 0.01)
+		self.net.bias.data.fill_(0)
+		self.lr = learning_rate
 
 	def forward(self, x):
-		return self.linear(x)
+		return self.net(x)	
 
-	def sgd(self, learning_rate):
-		with torch.no_grad():
-			for param in self.parameters():
-				if param.grad is not None:
-					param -= param.grad * learning_rate
+	def loss(self, y_hat, y):
+		fn = nn.MSELoss()
+		return fn(y_hat, y)
+	
+	def configure_optimizers(self):
+		return torch.optim.SGD(self.parameters(), self.lr)
 
 
-def train_model(model, train_x, train_y, num_epochs=100, learning_rate=0.01):
-	criterion = nn.MSELoss()
+def train_model(model, train_x, train_y, num_epochs=100):
 
 	for epoch in range(num_epochs):
-		model.train()
+		model.train() # Set the model to training mode
+		#for train_x, train_y in train_loader:
 		y_hat = model.forward(train_x)
-		loss = criterion(y_hat, train_y)
-		# add weight decay, l2 regularization
-		l2_lambda = 0.01
-		l2_reg = torch.tensor(0.)
-		for name, param in model.named_parameters():
-			if 'bias' not in name: # excludes biases
-				l2_reg += torch.norm(param)
-		loss = loss + l2_lambda * l2_reg
-		# zero gradients
-		model.zero_grad()
+		loss = model.loss(y_hat, train_y)
 		# calculate gradient
 		loss.backward()
 		# update parameters
-		model.sgd(learning_rate)
+		optimizer = model.configure_optimizers()
+		optimizer.step()
+		# zero gradients
+		model.zero_grad()
 
 		if epoch % 10 == 0:
 			print(f'Epoch: {epoch}/{num_epochs}, Loss: {loss.item()}')
 
 def demo_linear_model():
-	m = MyModel()
+	m = LinearRegression(0.01)
 	train_x, train_y, test_x, test_y = generate_data()
 	train_model(m, train_x, train_y)
 
-	print(m.linear.weight)
-	print(m.linear.bias)
+	print(m.net.weight)
+	print(m.net.bias)
 
 #############classification model##############
 
@@ -107,25 +105,12 @@ class MLP(nn.Module):
 				if layer.bias is not None:
 					nn.init.zeros_(layer.bias)
 
-def train_loop(num_epochs=5):
-	resize = (28, 28)
-
-	fashion_mnist = FashionMNIST(64, resize)
-	train_loader = fashion_mnist.get_dataloader(train=True)
-	val_loader = fashion_mnist.get_dataloader(train=False)
-
-	num_inputs = resize[0] * resize[1]
-	num_hidden = 256
-	num_outputs = 10
-	model = MLP(num_inputs, num_hidden, num_outputs)
-
-	criterion = nn.CrossEntropyLoss() 
-	optimizer = optim.SGD(model.parameters(), lr=0.01)
+def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5):
 
 	train_losses = []
 	val_losses = []
 	for epoch in range(num_epochs):
-
+		
 		total_train_loss = 0
 		correct_train = 0
 		total_train = 0
@@ -145,7 +130,7 @@ def train_loop(num_epochs=5):
 			correct_train += (predicted == y).sum().item()
 
 		# Print epoch statistics
-		#print(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
+		print(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
 
 		total_val_loss = 0
 		total_val = 0
@@ -186,20 +171,24 @@ def train_loop(num_epochs=5):
 	plt.show()
 
 
-train_loop()
+#Example usage
+if __name__ == '__main__':
+	"""
+	resize = (28, 28)
+	batch_size = 64
+	num_epochs = 5
+	num_inputs = resize[0] * resize[1]
+	num_hidden = 256
+	num_outputs = 10
 
+	fashion_mnist = FashionMNIST(64, resize)
+	train_loader = fashion_mnist.get_dataloader(train=True)
+	val_loader = fashion_mnist.get_dataloader(train=False)
 
-def dropout_layer(X, dropout):
-	assert 0 <= dropout <= 1
-	if dropout == 1: return torch.zeros_like(X)
-	mask = (torch.rand(X.shape) > dropout).float()
-	print(mask)
-	return (X * mask) / (1-dropout)
+	model = MLP(num_inputs, num_hidden, num_outputs)
+	criterion = nn.CrossEntropyLoss() 
+	optimizer = optim.SGD(model.parameters(), lr=0.01)
 
-def test_dropout_layer():
-	X = torch.arange(16, dtype=torch.float32).reshape((2, 8))
-	print(X)
-	print(X.mean().item())
-	a = dropout_layer(X, 0.5)
-	print(a.mean().item())
-
+	train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5)
+	"""
+	demo_linear_model()
