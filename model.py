@@ -107,7 +107,7 @@ class MLP(nn.Module):
 				if layer.bias is not None:
 					nn.init.zeros_(layer.bias)
 
-def train_loop():
+def train_loop(num_epochs=5):
 	resize = (28, 28)
 
 	fashion_mnist = FashionMNIST(64, resize)
@@ -122,7 +122,6 @@ def train_loop():
 	criterion = nn.CrossEntropyLoss() 
 	optimizer = optim.SGD(model.parameters(), lr=0.01)
 
-	num_epochs = 5
 	train_losses = []
 	val_losses = []
 	for epoch in range(num_epochs):
