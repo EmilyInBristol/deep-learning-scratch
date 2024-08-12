@@ -6,7 +6,7 @@ import torch # type: ignore
 from torch.utils.data import DataLoader, TensorDataset, random_split # type: ignore
 
 import model
-from model import MLP, train_loop
+from model import MLP, LinearRegression, train_loop, train_model
 import numpy as np # type: ignore
 import torch.nn as nn # type: ignore
 import torch.optim as optim # type: ignore
@@ -86,7 +86,7 @@ class KaggleHouse():
         # split traindata to train and val data
         # Shuffle the DataFrame
         train_all = train_all.sample(frac=1).reset_index(drop=True)
-        train_size = int(0.7 * len(train_all))
+        train_size = int(0.8 * len(train_all))
         self.train = train_all[:train_size]
         self.val = train_all[train_size:]
         
@@ -99,8 +99,8 @@ class KaggleHouse():
         y = data['SalePrice'].values
         y = torch.log(torch.tensor(y, dtype=torch.float32)).reshape(-1, 1)
         #else:
-        #    X = data.values
-        #    y = None
+            #X = data.values
+            #y = None
 
         X_tensor = torch.tensor(X, dtype=torch.float32)
         dataset = TensorDataset(X_tensor, y)
@@ -121,11 +121,11 @@ num_inputs = 330
 num_hidden = 32
 num_outputs = 1
 
-model = MLP(num_inputs, num_hidden, num_outputs)
+model = LinearRegression()
 criterion = nn.MSELoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
+optimizer = model.configure_optimizers()
 
-train_loader = kaggle_house.get_dataloader(train=True, batch_size=64)
+train_loader= kaggle_house.get_dataloader(train=True, batch_size=64)
 val_loader = kaggle_house.get_dataloader(train=False, batch_size=64)
 
-train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5)
+train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=10)

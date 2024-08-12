@@ -23,7 +23,7 @@ def generate_data():
 	return data.x[:10], data.y[:10], data.x[10:], data.y[10:]
 
 class LinearRegression(nn.Module):
-	def __init__(self, learning_rate):
+	def __init__(self, learning_rate=0.01):
 		super(LinearRegression, self).__init__()
 		self.net = nn.LazyLinear(1)
 		self.net.weight.data.normal_(0, 0.01)
@@ -40,11 +40,10 @@ class LinearRegression(nn.Module):
 	def configure_optimizers(self):
 		return torch.optim.SGD(self.parameters(), self.lr)
 
-
 def train_model(model, train_x, train_y, num_epochs=100):
+	# no batch iterative, use all train data
 	for epoch in range(num_epochs):
 		model.train() # Set the model to training mode
-		#for train_x, train_y in train_loader:
 		y_hat = model.forward(train_x)
 		loss = model.loss(y_hat, train_y)
 		# calculate gradient
@@ -56,7 +55,8 @@ def train_model(model, train_x, train_y, num_epochs=100):
 		model.zero_grad()
 
 		if epoch % 10 == 0:
-			print(f'Epoch: {epoch}/{num_epochs}, Loss: {loss.item()}')
+			print(f'Epoch: {epoch}/{num_epochs}, TrainLoss: {loss.item()}')
+
 
 def demo_linear_model():
 	m = LinearRegression(0.01)
@@ -67,7 +67,6 @@ def demo_linear_model():
 	print(m.net.bias)
 
 #############classification model##############
-
 FASHION_MNIST_LABELS = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
               'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
 
@@ -161,10 +160,11 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 
 	# Plotting the losses
 	plt.figure(figsize=(10, 6))
-	plt.plot(range(1, num_epochs+1), train_losses, label='Train Loss')
-	plt.plot(range(1, num_epochs+1), val_losses, label='Validation Loss')
+	plt.plot(range(0, num_epochs), train_losses, label='Train Loss')
+	plt.plot(range(1, num_epochs+1), val_losses, label='Validation Loss', linestyle='--')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
+	plt.yscale('log')
 	plt.title('Training and Validation Loss Over Epochs')
 	plt.legend()
 	plt.show()
