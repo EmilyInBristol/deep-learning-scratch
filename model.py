@@ -42,7 +42,6 @@ class LinearRegression(nn.Module):
 
 
 def train_model(model, train_x, train_y, num_epochs=100):
-
 	for epoch in range(num_epochs):
 		model.train() # Set the model to training mode
 		#for train_x, train_y in train_loader:
