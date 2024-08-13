@@ -10,6 +10,7 @@ from model import MLP, LinearRegression, train_loop, train_model
 import numpy as np # type: ignore
 import torch.nn as nn # type: ignore
 import torch.optim as optim # type: ignore
+import logging
 
 url_train = 'http://d2l-data.s3-accelerate.amazonaws.com/kaggle_house_pred_train.csv'
 sha1_hash_train = '585e9cc93e70b39160e7921475f9bcd7d31219ce'
@@ -58,6 +59,8 @@ class KaggleHouse():
         df_train = get_data_frame(url_train, sha1_hash_train)
         df_test = get_data_frame(url_test, sha1_hash_test)
         print(df_train.shape, df_test.shape)
+        logging.debug(f"""Training DataFrame shape: {df_train.shape}, 
+                      Testing DataFrame shape: {df_test.shape}""")
 
         label = 'SalePrice'
         features_train = df_train.drop(columns=['Id', label])
