@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader # type: ignore
 import torch.optim as optim # type: ignore
 import torch.nn.functional as F # type: ignore
 import matplotlib.pyplot as plt # type: ignore
+import logging
 
 
 ##############linear regression with no active function###############
@@ -103,7 +104,7 @@ class MLP(nn.Module):
 				if layer.bias is not None:
 					nn.init.zeros_(layer.bias)
 
-def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5):
+def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5, is_plot=True):
 
 	train_losses = []
 	val_losses = []
@@ -128,7 +129,7 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 			correct_train += (predicted == y).sum().item()
 
 		# Print epoch statistics
-		print(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
+		logging.debug(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
 
 		total_val_loss = 0
 		total_val = 0
@@ -152,16 +153,18 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 		train_losses.append(avg_train_loss)
 		val_losses.append(avg_val_loss)
 
-		print(f"""Epoch [{epoch+1}/{num_epochs}], 
-	TrainLoss: {avg_train_loss:.4f}, 
-	ValidationLoss: {avg_val_loss:.4f}, 
-	ValidationAccuracy: {100 * correct_val / total_val:.2f}%""")
+		logging.debug(f"""Epoch [{epoch+1}/{num_epochs}], 
+			TrainLoss: {avg_train_loss:.4f}, 
+			ValidationLoss: {avg_val_loss:.4f}, 
+			ValidationAccuracy: {100 * correct_val / total_val:.2f}%""")
 
+	return (train_losses, val_losses)
 
+def draw(train_loss, val_loss, num_epochs=5):
 	# Plotting the losses
 	plt.figure(figsize=(10, 6))
-	plt.plot(range(0, num_epochs), train_losses, label='Train Loss')
-	plt.plot(range(1, num_epochs+1), val_losses, label='Validation Loss', linestyle='--')
+	plt.plot(range(0, num_epochs), train_loss, label='Train Loss')
+	plt.plot(range(1, num_epochs+1), val_loss, label='Validation Loss', linestyle='--')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
 	plt.yscale('log')
