@@ -1,5 +1,9 @@
 import torch
 from torch import nn
+from model import FashionMNIST, train_loop
+import torch.optim as optim # type: ignore
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 def cpu():
     return torch.device('cpu')
@@ -99,16 +103,54 @@ def corr2d_multi_in_out_1x1(X, K):
     Y = Y.reshape((c_0, h, w))
     return Y
 
+"""
 X = torch.normal(0, 1, (3, 3, 3))
 K = torch.normal(0, 1, (2, 3, 1, 1))
 Y1 = corr2d_multi_in_out_1x1(X, K)
-
 Y2 = corr2d_multi_in_out(X, K)
-
 print(Y1, Y2)
 assert float(torch.abs(Y1 - Y2).sum()) < 1e-6
+"""
+
+class LeNet(nn.Module):
+    def __init__(self, lr=0.1, num_classes=10):
+        super(LeNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.LazyConv2d(6, kernel_size=5, padding=2), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.LazyConv2d(16, kernel_size=5), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Flatten(),
+            nn.LazyLinear(120), nn.Sigmoid(),
+            nn.LazyLinear(84), nn.Sigmoid(),
+            nn.LazyLinear(num_classes)
+        )
+
+    def forward(self, X):
+        return self.net(X)
+
+def layer_summary(X_shape):
+    X = torch.randn(X_shape)
+    for layer in model.net:
+        X = layer(X)
+        print(layer.__class__.__name__, 'output shape:\t', X.shape)
 
 
+if __name__ == '__main__':
+
+    #layer_summary((1, 1, 28, 28))
+
+    resize = (28, 28)
+    batch_size = 64
+    model = LeNet(lr=0.1)
+    fashion_mnist = FashionMNIST(batch_size)
+    train_loader = fashion_mnist.get_dataloader(True)
+    val_loader = fashion_mnist.get_dataloader(False)
+
+    criterion = nn.CrossEntropyLoss() 
+    optimizer = optim.SGD(model.parameters(), lr=0.1)
+
+    train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=10)
 
 
 

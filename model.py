@@ -7,7 +7,7 @@ import torch.optim as optim # type: ignore
 import torch.nn.functional as F # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import logging
-
+logging.basicConfig(level=logging.DEBUG)
 
 ##############linear regression with no active function###############
 class SynthesisData():
@@ -109,7 +109,6 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 	train_losses = []
 	val_losses = []
 	for epoch in range(num_epochs):
-		
 		total_train_loss = 0
 		correct_train = 0
 		total_train = 0
@@ -175,7 +174,7 @@ def draw(train_loss, val_loss, num_epochs=5):
 
 #Example usage
 if __name__ == '__main__':
-	"""
+	
 	resize = (28, 28)
 	batch_size = 64
 	num_epochs = 5
@@ -192,5 +191,5 @@ if __name__ == '__main__':
 	optimizer = optim.SGD(model.parameters(), lr=0.01)
 
 	train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5)
-	"""
-	demo_linear_model()
+	
+	#demo_linear_model()
