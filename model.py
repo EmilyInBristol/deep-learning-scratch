@@ -7,7 +7,7 @@ import torch.optim as optim # type: ignore
 import torch.nn.functional as F # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 ##############linear regression with no active function###############
 class SynthesisData():
@@ -155,7 +155,7 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 		val_losses.append(avg_val_loss)
 		val_correct.append(avg_val_correct)
 
-		logging.debug(f"""Epoch [{epoch+1}/{num_epochs}], 
+		logging.info(f"""Epoch [{epoch+1}/{num_epochs}], 
 			TrainLoss: {avg_train_loss:.4f}, 
 			ValidationLoss: {avg_val_loss:.4f}, 
 			ValidationAccuracy: {100 * avg_val_correct:.2f}%""")
@@ -173,7 +173,6 @@ def draw(train_loss, val_loss, num_epochs=5):
 	plt.title('Training and Validation Loss Over Epochs')
 	plt.legend()
 	plt.show()
-
 
 #Example usage
 if __name__ == '__main__':
