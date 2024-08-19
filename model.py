@@ -108,6 +108,7 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 
 	train_losses = []
 	val_losses = []
+	val_correct = []
 	for epoch in range(num_epochs):
 		total_train_loss = 0
 		correct_train = 0
@@ -128,7 +129,7 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 			correct_train += (predicted == y).sum().item()
 
 		# Print epoch statistics
-		logging.debug(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
+		#logging.debug(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
 
 		total_val_loss = 0
 		total_val = 0
@@ -149,15 +150,17 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 
 		avg_train_loss = total_train_loss/len(train_loader)
 		avg_val_loss = total_val_loss/len(val_loader)
+		avg_val_correct = correct_val / total_val
 		train_losses.append(avg_train_loss)
 		val_losses.append(avg_val_loss)
+		val_correct.append(avg_val_correct)
 
 		logging.debug(f"""Epoch [{epoch+1}/{num_epochs}], 
 			TrainLoss: {avg_train_loss:.4f}, 
 			ValidationLoss: {avg_val_loss:.4f}, 
-			ValidationAccuracy: {100 * correct_val / total_val:.2f}%""")
+			ValidationAccuracy: {100 * avg_val_correct:.2f}%""")
 
-	return (train_losses, val_losses)
+	return (train_losses, val_losses, val_correct)
 
 def draw(train_loss, val_loss, num_epochs=5):
 	# Plotting the losses

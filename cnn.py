@@ -1,7 +1,8 @@
-import torch
-from torch import nn
+import torch # type: ignore
+from torch import nn # type: ignore
 from model import FashionMNIST, train_loop
 import torch.optim as optim # type: ignore
+import matplotlib.pyplot as plt # type: ignore
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -67,13 +68,6 @@ def comp_conv2d(conv2d, X):
     Y = conv2d(X)
     Y = Y.reshape(Y.shape[2:])
 
-"""
-conv2d = nn.LazyConv2d(1, padding=1, kernel_size=3)
-X = torch.rand(size = (8,8))
-ret = comp_conv2d(conv2d, X)
-#print(ret.shape)
-"""
-
 def corr2d_multi_in(X, K):
     return sum(corr2d(x, k) for x, k in zip(X, K))
 
@@ -82,15 +76,6 @@ def corr2d_multi_in_out(X, K):
     # cross-correlation operations with input X. All of the results are
     # stacked together
     return torch.stack([corr2d_multi_in(X, k) for k in K], 0)
-
-"""
-X = torch.tensor([[[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]],
-               [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]])
-K = torch.tensor([[[0.0, 1.0], [2.0, 3.0]], [[1.0, 2.0], [3.0, 4.0]]])
-
-Y = corr2d_multi_in(X, K)
-print(Y)
-"""
 
 def corr2d_multi_in_out_1x1(X, K):
     c_i, h, w = X.shape
@@ -102,15 +87,6 @@ def corr2d_multi_in_out_1x1(X, K):
     Y = torch.matmul(K, X)
     Y = Y.reshape((c_0, h, w))
     return Y
-
-"""
-X = torch.normal(0, 1, (3, 3, 3))
-K = torch.normal(0, 1, (2, 3, 1, 1))
-Y1 = corr2d_multi_in_out_1x1(X, K)
-Y2 = corr2d_multi_in_out(X, K)
-print(Y1, Y2)
-assert float(torch.abs(Y1 - Y2).sum()) < 1e-6
-"""
 
 class LeNet(nn.Module):
     def __init__(self, lr=0.1, num_classes=10):
@@ -126,6 +102,13 @@ class LeNet(nn.Module):
             nn.LazyLinear(num_classes)
         )
 
+    def _initialize_weights(self):
+        for module in self.net:
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+
     def forward(self, X):
         return self.net(X)
 
@@ -135,14 +118,26 @@ def layer_summary(X_shape):
         X = layer(X)
         print(layer.__class__.__name__, 'output shape:\t', X.shape)
 
+def draw(train_losses, val_losses, val_correct, num_epochs=5):
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(0, num_epochs), train_losses, label='Train Loss')
+    plt.plot(range(0, num_epochs), val_losses, label='Validation Loss', linestyle='--')
+    plt.plot(range(0, num_epochs), val_correct, label='Validation Correction')
+    plt.xlabel('Epochs')
+    plt.legend()
+    plt.show()
 
 if __name__ == '__main__':
 
     #layer_summary((1, 1, 28, 28))
-
     resize = (28, 28)
-    batch_size = 64
+    batch_size = 128
     model = LeNet(lr=0.1)
+
+    dummy_input = torch.randn(1, 1, 28, 28)
+    model(dummy_input)
+    model._initialize_weights()
+
     fashion_mnist = FashionMNIST(batch_size)
     train_loader = fashion_mnist.get_dataloader(True)
     val_loader = fashion_mnist.get_dataloader(False)
@@ -150,8 +145,8 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss() 
     optimizer = optim.SGD(model.parameters(), lr=0.1)
 
-    train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=10)
-
+    train_losses, val_losses, val_correct = train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=10)
+    draw(train_losses, val_losses, val_correct, num_epochs=10)
 
 
 
