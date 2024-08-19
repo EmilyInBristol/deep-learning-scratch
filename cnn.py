@@ -72,9 +72,6 @@ def corr2d_multi_in(X, K):
     return sum(corr2d(x, k) for x, k in zip(X, K))
 
 def corr2d_multi_in_out(X, K):
-    # Iterate through the 0th dimension of K, and each time, perform
-    # cross-correlation operations with input X. All of the results are
-    # stacked together
     return torch.stack([corr2d_multi_in(X, k) for k in K], 0)
 
 def corr2d_multi_in_out_1x1(X, K):
@@ -111,6 +108,19 @@ class LeNet(nn.Module):
 
     def forward(self, X):
         return self.net(X)
+    
+def AlexNet(nn.Module):
+    def __init__(self, lr=0.1, num_classes=10):
+        super(AlexNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.LazyConv2d(96, kernel_size=11, stride=4, padding=1), 
+            nn.ReLU(), nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.LazyConv2d(256, kernel_size=5, padding=2), nn.ReLU(), 
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.LazyConv2d(384, kernel_size=3, padding=1),
+            nn.LazyConv2d(384, kernel_size=3, padding=1),
+            nn.LazyConv2d(256, kernel_size=3, padding=1)
+        )
 
 def layer_summary(X_shape):
     X = torch.randn(X_shape)
