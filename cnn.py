@@ -186,7 +186,7 @@ if __name__ == '__main__':
     batch_size = 128
     #model = LeNet(lr=0.1).to(device)
     #model = AlexNet(lr=0.1)
-    model = BNLeNet(lr=0.1)
+    model = BNLeNet(lr=0.1).to(device)
     #X_shape = (1, 1) + resize
     #layer_summary(X_shape, model)
 
