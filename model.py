@@ -129,7 +129,7 @@ def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs
 			correct_train += (predicted == y).sum().item()
 
 		# Print epoch statistics
-		#logging.debug(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
+		logging.info(f"Epoch [{epoch+1}/{num_epochs}], TrainingLoss: {total_train_loss/len(train_loader):.4f}, Accuracy: {100 * correct_train / total_train:.2f}%")
 
 		total_val_loss = 0
 		total_val = 0

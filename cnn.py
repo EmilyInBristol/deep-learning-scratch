@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt # type: ignore
 import logging
 logging.basicConfig(level=logging.INFO)
 
+# set the device to cpu
+device = torch.device('cpu')
+
 def cpu():
     return torch.device('cpu')
 
@@ -109,6 +112,39 @@ class LeNet(nn.Module):
     def forward(self, X):
         return self.net(X)
     
+class BNLeNet(nn.Module):
+    def __init__(self, lr=0.1, num_classes=10):
+        super(BNLeNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.LazyConv2d(6, kernel_size=5, padding=2), nn.LazyBatchNorm2d(),
+            #nn.Sigmoid(),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.LazyConv2d(16, kernel_size=5), nn.LazyBatchNorm2d(),
+            #nn.Sigmoid(),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Flatten(),
+            nn.LazyLinear(120), nn.LazyBatchNorm1d(),
+            #nn.Sigmoid(),
+            nn.ReLU(),
+            nn.LazyLinear(84), nn.LazyBatchNorm1d(),
+            #nn.Sigmoid(),
+            nn.ReLU(),
+            nn.LazyLinear(num_classes)
+        )
+
+    def _initialize_weights(self):
+        for module in self.net:
+            if isinstance(module, (nn.Conv2d, nn.Linear)):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+
+    def forward(self, X):
+        return self.net(X)
+
+    
 class AlexNet(nn.Module):
     def __init__(self, lr=0.1, num_classes=10):
         super(AlexNet, self).__init__()
@@ -148,14 +184,15 @@ if __name__ == '__main__':
 
     resize = (224, 224)
     batch_size = 128
-    #model = LeNet(lr=0.1)
-    model = AlexNet(lr=0.1)
+    #model = LeNet(lr=0.1).to(device)
+    #model = AlexNet(lr=0.1)
+    model = BNLeNet(lr=0.1)
     #X_shape = (1, 1) + resize
     #layer_summary(X_shape, model)
 
-    #dummy_input = torch.randn(1, 1, 224, 224)
-    #model(dummy_input)
-    #model._initialize_weights()
+    dummy_input = torch.randn(2, 1, 224, 224)
+    model(dummy_input)
+    model._initialize_weights()
     
     fashion_mnist = FashionMNIST(batch_size, resize)
     train_loader = fashion_mnist.get_dataloader(True)
@@ -164,8 +201,8 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss() 
     optimizer = optim.SGD(model.parameters(), lr=0.1)
 
-    train_losses, val_losses, val_correct = train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=10)
-    draw(train_losses, val_losses, val_correct, num_epochs=1)
+    train_losses, val_losses, val_correct = train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=3)
+    draw(train_losses, val_losses, val_correct, num_epochs=3)
 
     
 
