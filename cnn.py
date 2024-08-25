@@ -169,26 +169,27 @@ class AlexNet(nn.Module):
 class Residual(nn.Module):
     def __init__(self, num_channels, use_1x1conv=False, strides=1):
         super().__init__()
-        self.conv1 = nn.LazyConv2d(num_channels, kernel_size=3, padding=1, stride=strides)
-        self.conv2 = nn.LazyConv2d(num_channels, kernel_size=3, padding=1)
+        self.use_1x1conv = use_1x1conv
+        self.net = nn.Sequential(
+            nn.LazyConv2d(num_channels, kernel_size=3, padding=1, stride=strides),
+            nn.LazyBatchNorm2d(),
+            nn.ReLU(),
+            nn.LazyConv2d(num_channels, kernel_size=3, padding=1),
+            nn.LazyBatchNorm2d(),
+        )
         if use_1x1conv:
             self.conv3 = nn.LazyConv2d(num_channels, kernel_size=1, stride=strides)
         else:
             self.conv3 = None
 
-        self.bn1 = nn.LazyBatchNorm2d()
-        self.bn2 = nn.LazyBatchNorm2d()
-
     def forward(self, X):
-        Y = F.relu(self.bn1(self.conv1(X)))
-        Y = self.bn2(self.conv2(Y))
-        if self.conv3:
+        Y = self.net(X)
+
+        if self.use_1x1conv:
             X = self.conv3(X)
 
         Y += X
         return F.relu(Y)
-
-        
 
 def layer_summary(X_shape, model):
     X = torch.randn(X_shape)
@@ -207,6 +208,13 @@ def draw(train_losses, val_losses, val_correct, num_epochs=5):
 
 if __name__ == '__main__':
 
+    blk = Residual(3)
+    X = torch.randn(4, 3, 6, 6)
+    print(blk(X).shape)
+    X_shape = (4, 3, 6, 6)
+    layer_summary(X_shape, blk)
+
+    """
     resize = (224, 224)
     batch_size = 128
     #model = LeNet(lr=0.1).to(device)
@@ -228,8 +236,7 @@ if __name__ == '__main__':
 
     train_losses, val_losses, val_correct = train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=3)
     draw(train_losses, val_losses, val_correct, num_epochs=3)
-
-    
+    """
 
     
     
