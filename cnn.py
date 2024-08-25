@@ -228,9 +228,20 @@ class ResNet(nn.Module):
                 blk.append(Residual(num_channels))
         return nn.Sequential(*blk)
     
+    def _initialize_weights(self):
+        # Simple weight initialization example
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+    
 class ResNet18(ResNet):
     def __init__(self, lr=0.1, num_classes=10):
-        super().__init__(((2, 64), (2, 128), (2, 256), (2, 512)),
+        super(ResNet18, self).__init__(((2, 64), (2, 128), (2, 256), (2, 512)),
                        lr, num_classes)
         
     def layer_summary(self, input_shape):
@@ -239,6 +250,8 @@ class ResNet18(ResNet):
             X = layer(X)
             print(f'{layer.__class__.__name__} output shape:\t', X.shape)
 
+    def forward(self, X):
+        return self.net(X)
 
 def layer_summary(X_shape, model):
     X = torch.randn(X_shape)
@@ -263,18 +276,19 @@ if __name__ == '__main__':
     print(blk(X).shape)
     X_shape = (4, 3, 6, 6)
     layer_summary(X_shape, blk)
-    """
+    
     ResNet18().layer_summary((1, 1, 96, 96))
     """
-    resize = (224, 224)
+    resize = (96, 96)
     batch_size = 128
     #model = LeNet(lr=0.1).to(device)
     #model = AlexNet(lr=0.1)
-    model = BNLeNet(lr=0.1).to(device)
+    #model = BNLeNet(lr=0.1).to(device)
+    model = ResNet18()
     #X_shape = (1, 1) + resize
     #layer_summary(X_shape, model)
 
-    dummy_input = torch.randn(2, 1, 224, 224)
+    dummy_input = torch.randn(2, 1, 96, 96)
     model(dummy_input)
     model._initialize_weights()
     
@@ -287,7 +301,7 @@ if __name__ == '__main__':
 
     train_losses, val_losses, val_correct = train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=3)
     draw(train_losses, val_losses, val_correct, num_epochs=3)
-    """
+    
 
     
     
