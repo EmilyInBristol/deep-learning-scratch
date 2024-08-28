@@ -104,7 +104,7 @@ class MLP(nn.Module):
 				if layer.bias is not None:
 					nn.init.zeros_(layer.bias)
 
-def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5, is_plot=True):
+def train_loop(model, train_loader, val_loader, criterion, optimizer, num_epochs=5):
 
 	train_losses = []
 	val_losses = []
@@ -166,7 +166,7 @@ def draw(train_loss, val_loss, num_epochs=5):
 	# Plotting the losses
 	plt.figure(figsize=(10, 6))
 	plt.plot(range(0, num_epochs), train_loss, label='Train Loss')
-	plt.plot(range(1, num_epochs+1), val_loss, label='Validation Loss', linestyle='--')
+	plt.plot(range(1, num_epochs+1), val_loss, label='Val Loss', linestyle='--')
 	plt.xlabel('Epochs')
 	plt.ylabel('Loss')
 	plt.yscale('log')
