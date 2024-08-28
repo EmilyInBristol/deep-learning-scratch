@@ -1,7 +1,7 @@
 import torch # type: ignore
 from torch import nn # type: ignore
 import matplotlib.pyplot as plt # type: ignore
-from model import train_model, LinearRegression, train_loop, draw
+from model import train_model, LinearRegression, train_loop, plot_predictions
 from torch.utils.data import TensorDataset, DataLoader # type: ignore
 
 class Data(nn.Module):
@@ -21,25 +21,28 @@ class Data(nn.Module):
         dataset = TensorDataset(self.features[i], self.labels[i])
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=train)
         return dataloader
+    
+if __name__ == '__main__':
+    data = Data(T=1000)
+    train_loader = data.get_dataloader()
+    test_loader = data.get_dataloader(train=False)
+    model = LinearRegression(0.01)
+    criterion=nn.MSELoss()
+    optimizer = model.configure_optimizers()
+    (train_losses, val_losses, val_correct) = train_loop(model, train_loader, test_loader, criterion, optimizer, )
+    onestep_preds = model(data.features).detach().numpy()
+    """
+    plot_predictions(data.time[data.tau:], data.labels, onestep_preds, 'time', 'x', legend=['labels', '1-step preds'], figsize=(6, 3))
+    #draw(train_losses, val_losses)
+    """
+    multistep_preds = torch.zeros(data.T)
+    multistep_preds[:] = data.x
+    for i in range(data.num_train+data.tau, data.T):
+        multistep_preds[i] = model(multistep_preds[i-data.tau:i].reshape(1, -1))
 
-data = Data(T=1000)
-train_loader = data.get_dataloader()
-test_loader = data.get_dataloader(train=False)
-model = LinearRegression(0.01)
-#train_model(model, train_x, train_y)
-criterion=nn.MSELoss()
-optimizer = model.configure_optimizers()
-(train_losses, val_losses, val_correct) = train_loop(model, train_loader, test_loader, criterion, optimizer, )
-draw(train_losses, val_losses)
+    print(multistep_preds[:10])
+    multistep_preds = multistep_preds.detach().numpy()
+    print(multistep_preds[:10])
 
-
-
-
-
-"""
-plt.plot(data.time, data.x)
-plt.xlabel('Time')
-plt.ylabel('X')
-plt.legend()
-plt.show()
-"""
+    plot_predictions([data.time[data.tau:], data.time[data.num_train+data.tau:]], [onestep_preds, multistep_preds[data.num_train+data.tau:]], 'time','x', legend=['1-step preds', 'multistep preds'], figsize=(6, 3))
+    

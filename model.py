@@ -174,7 +174,16 @@ def draw(train_loss, val_loss, num_epochs=5):
 	plt.legend()
 	plt.show()
 
-#Example usage
+def plot_predictions(xlist, ylist, xlabel, ylabel, legend, figsize=(6, 3)):
+    plt.figure(figsize=figsize)
+    plt.plot(xlist[0], ylist[0], label=legend[0], color='blue')
+    plt.plot(xlist[1], ylist[1], label=legend[1], color='orange')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.show()
+
+
 if __name__ == '__main__':
 	
 	resize = (28, 28)
