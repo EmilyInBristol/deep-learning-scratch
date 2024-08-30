@@ -55,10 +55,17 @@ def test_k_step_ahead():
     plot_predictions([data.time[data.tau:], data.time[data.num_train+data.tau:]], [onestep_preds, multistep_preds[data.num_train+data.tau:]], 'time','x', legend=['1-step preds', 'multistep preds'], figsize=(6, 3))
 
 class TimeMachine(nn.Module):
-    def __init__(self):
+    def __init__(self, num_steps, batch_size, num_train=10000, num_val=5000):
         super().__init__()
+        corpus, self.vocab = self.build(self._download())
+        array = torch.tensor([corpus[i:i+num_steps+1] for i in range(len(corpus)-num_steps)])
+        self.X, self.Y = array[:,:-1], array[:,1:]
 
-    def _download_raw_text(self):
+        self.num_train = num_train
+        self.num_val = num_val
+        self.batch_size = batch_size
+
+    def _download(self):
         DATA_URL = 'http://d2l-data.s3-accelerate.amazonaws.com/timemachine.txt'
         sha1_hash = '090b5e7e70c295757f55df93cb0a180b9691891a'
         folder = './data/timemachine'
@@ -76,6 +83,13 @@ class TimeMachine(nn.Module):
         if vocab is None: vocab = Vocab(tokens)
         corpus = [vocab[token] for token in tokens]
         return corpus, vocab
+    
+    def get_dataloader(self, train=True):
+        i = slice(0, self.num_train) if train else slice(
+            self.num_train, self.num_train + self.num_val)
+        dataset = TensorDataset(self.X[i], self.Y[i])
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=train)
+        return dataloader
     
 class Vocab():
     def __init__(self, tokens=[], min_freq=0):
@@ -105,12 +119,9 @@ class Vocab():
         return self.token_to_idx['<unk>']
         
 if __name__ == '__main__':
-    data = TimeMachine()
-    text = data._download_raw_text()
-    corpus, vocab = data.build(text)
-    print(len(corpus))
-    print(len(vocab))
 
-    words = text.split()
-    vocab = Vocab(words)
-    print(vocab.token_freqs[:10])
+    data = TimeMachine(batch_size=2, num_steps=10)
+    for X, Y in data.get_dataloader():
+        print('X:', X, '\nY:', Y)
+        break
+
