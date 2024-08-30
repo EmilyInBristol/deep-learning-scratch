@@ -31,9 +31,9 @@ def check_sha1(filepath, sha1_hash):
 
     return sha1.hexdigest() == sha1_hash
 
-def get_data_frame(url, sha1_hash):
+def get_data_frame(url, sha1_hash, in_folder):
     # down load from url
-    filename = os.path.join(folder, url.split('/')[-1])
+    filename = os.path.join(in_folder, url.split('/')[-1])
     if not os.path.exists(filename):
         logging.info(f'Downloading {url}...')
         response = requests.get(url, stream=True)
@@ -46,11 +46,17 @@ def get_data_frame(url, sha1_hash):
     if sha1_hash:
         assert check_sha1(filename, sha1_hash), "Downloaded file's hash does not match."
 
-    df = pd.read_csv(filename)
-    #print(df.head().iloc[:, [0, 1, 2, 3, -3, -2, -1]]) # a quick overview of data
-    #print(df.shape)
-    logging.info(f'DataFrame shape: {df.shape}')
-    return df
+    file_extension = os.path.splitext(filename)[1].lower()
+    if file_extension == '.csv':
+        df = pd.read_csv(filename)
+        logging.info(f'DataFrame shape: {df.shape}')
+        return df
+    elif file_extension == '.txt':
+        with open(filename) as f:
+            return f.read()
+    else:
+        logging.info("Unknown file extension.")
+
 
 class KaggleHouse():
     def __init__(self, train, val, batch_size=64) -> None:
@@ -125,8 +131,8 @@ def k_fold_data(data, k):
 
 if __name__ == '__main__':
 
-    kaggle_house_train = get_data_frame(url_train, sha1_hash_train)
-    kaggle_house_test = get_data_frame(url_test, sha1_hash_test)
+    kaggle_house_train = get_data_frame(url_train, sha1_hash_train, folder)
+    kaggle_house_test = get_data_frame(url_test, sha1_hash_test, folder)
 
     num_epochs = 5
     num_inputs = 330
