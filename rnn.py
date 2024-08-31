@@ -120,8 +120,15 @@ class Vocab():
         
 if __name__ == '__main__':
 
+    """
     data = TimeMachine(batch_size=2, num_steps=10)
     for X, Y in data.get_dataloader():
         print('X:', X, '\nY:', Y)
         break
+    """
 
+    l = [1, 2, 3]
+    print(max(l))
+    l_sorted = sorted(l, reverse=True)
+
+    print(l_sorted)
