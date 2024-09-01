@@ -5,6 +5,7 @@ from model import train_model, LinearRegression, train_loop, plot_predictions
 from torch.utils.data import TensorDataset, DataLoader # type: ignore
 import collections
 from torch.nn import functional as F # type: ignore
+import torch.optim as optim # type: ignore
 
 from kaggle import get_data_frame
 
@@ -149,11 +150,10 @@ class RNNScratch(nn.Module):
     
 class RNNLMScratch(nn.Module):  
     """The RNN-based language model implemented from scratch."""
-    def __init__(self, rnn, vocab_size, lr=0.01):
+    def __init__(self, rnn, vocab_size):
         super().__init__()
         self.rnn = rnn
         self.vocab_size = vocab_size
-        self.lr = lr
         self.init_params()
 
     def init_params(self):
@@ -161,48 +161,124 @@ class RNNLMScratch(nn.Module):
             torch.randn(
                 self.rnn.num_hiddens, self.vocab_size) * self.rnn.sigma)
         self.b_q = nn.Parameter(torch.zeros(self.vocab_size))
+    
+    def loss(self, Y_hat, Y, averaged=True):
+        #Y_hat.shape = torch.Size([1024, 16, 53]) Reshape: [16384, 53]
+        Y_hat = torch.reshape(Y_hat, (-1, Y_hat.shape[-1]))
+        #Y = torch.Size([1024, 16]) Flattened Dimension: 1024 * 16 = 16384
+        Y = torch.reshape(Y, (-1,))
+        return F.cross_entropy(
+            Y_hat, Y, reduction='mean' if averaged else 'none')
 
     def one_hot(self, X):
         # Output shape: (num_steps, batch_size, vocab_size)
         return F.one_hot(X.T, self.vocab_size).type(torch.float32)
 
     def training_step(self, batch):
+        #print(self(*batch[:-1]).shape, batch[-1].shape)
         l = self.loss(self(*batch[:-1]), batch[-1])
-        self.plot('ppl', torch.exp(l), train=True)
+        print(torch.exp(l).item())
+        #self.plot('ppl', torch.exp(l), train=True)
         return l
 
     def validation_step(self, batch):
         l = self.loss(self(*batch[:-1]), batch[-1])
-        self.plot('ppl', torch.exp(l), train=False)
-
+        #self.plot('ppl', torch.exp(l), train=False)
+        return l
+        
     def output_layer(self, rnn_outputs):
         outputs = [torch.matmul(H, self.W_hq) + self.b_q for H in rnn_outputs]
-        return torch.stack(outputs, 1)
+        return torch.stack(outputs, 1) #[batch_size, num_steps, vocab_size].
 
     def forward(self, X, state=None):
         embs = self.one_hot(X)
-        print(embs.shape)
         rnn_outputs, _ = self.rnn(embs, state)
-        print(rnn_outputs[0].shape)
         return self.output_layer(rnn_outputs)
 
+    def predict(self, prefix, num_preds, vocab):
+        state, outputs = None, [vocab[prefix[0]]]
+        for i in range(len(prefix) + num_preds - 1):
+            X = torch.tensor([[outputs[-1]]])
+            embs = self.one_hot(X)
+            rnn_outputs, state = self.rnn(embs, state)
+            if i < len(prefix) - 1:  # Warm-up period
+                outputs.append(vocab[prefix[i + 1]])
+            else:  # Predict num_preds steps
+                Y = self.output_layer(rnn_outputs)
+                outputs.append(int(Y.argmax(axis=2).reshape(1)))
+        return ''.join([vocab.idx_to_token[i] for i in outputs])
+    
+class Trainer():
+    def __init__(self) -> None:
+        self.train_batch_idx = 0
+        self.val_batch_idx = 0
+        self.train_ppls = []
+        self.val_ppls = []
+
+    def clip_gradients(self, grad_clip_val, model):
+        params = [p for p in model.parameters() if p.requires_grad]
+        norm = torch.sqrt(sum(torch.sum((p.grad ** 2)) for p in params))
+        if norm > grad_clip_val:
+            for param in params:
+                param.grad[:] *= grad_clip_val / norm
+
+    def fit_epoch(self, model, train_dataloader, val_dataloader, optimizer, gradient_clip_val=0, epoch_num=100):
+
+        for epoch in range(epoch_num):
+            model.train()
+            for batch in train_dataloader:
+                loss = model.training_step(batch)
+                optimizer.zero_grad()
+                loss.backward()
+                if gradient_clip_val > 0:  # To be discussed later
+                    self.clip_gradients(gradient_clip_val, model)
+                optimizer.step()
+                self.train_batch_idx += 1
+                self.train_ppls.append(torch.exp(loss).item())
+
+
+            if val_dataloader is None:
+                return
+            
+            model.eval()
+            for batch in val_dataloader:
+                loss = model.validation_step(batch)
+                self.val_batch_idx += 1
+                self.val_ppls.append(torch.exp(loss).item())
+
+def draw(train_loss, val_loss):
+	# Plotting the losses
+	plt.figure(figsize=(10, 6))
+	plt.plot(range(0, len(train_loss)), train_loss, label='Train PPL')
+	plt.plot(range(1, len(val_loss)+1), val_loss, label='Val PPL', linestyle='--')
+	plt.xlabel('Epochs')
+	plt.ylabel('PPL')
+	plt.title('Training and Validation PPL Over Epochs')
+	plt.legend()
+	plt.show()
         
 if __name__ == '__main__':
 
-    """
-    data = TimeMachine(batch_size=2, num_steps=10)
-    for X, Y in data.get_dataloader():
-        print('X:', X, '\nY:', Y)
-        break
-    """
-    batch_size, num_inputs, num_hiddens, num_steps = 2, 16, 32, 100
-    rnn = RNNScratch(num_inputs, num_hiddens)
+    data = TimeMachine(batch_size=1024, num_steps=16)
+    #for X, Y in data.get_dataloader():
+    #    print('X:', X, '\nY:', Y)
+    #    break
+    train_loader = data.get_dataloader()
+    val_loader = data.get_dataloader(train=False)
+    
+    #batch_size, num_inputs, num_hiddens, num_steps = 2, 16, 32, 100
+    rnn = RNNScratch(num_inputs=len(data.vocab), num_hiddens=32)
     #X = torch.ones((num_steps, batch_size, num_inputs)
-    model = RNNLMScratch(rnn, num_inputs)
-    X = torch.ones((batch_size, num_steps), dtype=torch.int64)
-    outputs = model(X)
-    print(outputs.shape)
+    model = RNNLMScratch(rnn, vocab_size=len(data.vocab))
+    #X = torch.ones((batch_size, num_steps), dtype=torch.int64)
+    #outputs = model(X)
+    #print(outputs.shape)
+    optimizer = optim.SGD(model.parameters(), lr=1)
 
+    trainer = Trainer()
+    trainer.fit_epoch(model, train_loader, val_loader, optimizer, gradient_clip_val=1, epoch_num=100)
+    draw(trainer.train_ppls, trainer.val_ppls)
+    print(model.predict('it has', 20, data.vocab))
 
 
 
