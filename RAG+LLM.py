@@ -39,6 +39,7 @@ def retrieve_documents(query, k=2):
 def generate_response(query):
     # Retrieve the top 2 relevant documents
     retrieved_docs = retrieve_documents(query, k=2)
+    print(retrieved_docs)
 
     # Combine the retrieved documents into a context for generation
     context = " ".join(retrieved_docs)
