@@ -1,45 +1,23 @@
-import torch
-import torch.nn as nn
+import numpy as np
 
-# Scaled Dot-Product Attention mechanism
-class ScaledDotProductAttention(nn.Module):
-    def __init__(self, d_k):
-        super(ScaledDotProductAttention, self).__init__()
-        self.scale = 1 / (d_k ** 0.5)
+def softmax(x):
+    y = np.max(x, axis=-1, keepdims=True)
+    exp_x = np.exp(x - y)
+    return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
 
-    def forward(self, Q, K, V):
-        # Compute the attention scores
-        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) * self.scale
-        
-        # Apply softmax to get the attention weights
-        attention_weights = torch.softmax(attention_scores, dim=-1)
-        
-        # Compute the final output (weighted sum of the values)
-        attention_output = torch.matmul(attention_weights, V)
-        return attention_output, attention_weights
+def scaled_dot_production(Q, K, V):
+    multi_qk = np.dot(Q, K.T)
+    d_k = K.shape[-1]
+    scaled_attention_logits = multi_qk / np.sqrt(d_k)
+    attention_weights = softmax(scaled_attention_logits)
+    output = np.dot(attention_weights, V)
+    return attention_weights, output
 
-# Create a simple example
-"""
-d_model = 4  # Model dimensionality
-Q = torch.rand(1, 5, d_model, requires_grad=True)  # Query matrix
-K = torch.rand(1, 5, d_model, requires_grad=True)  # Key matrix
-V = torch.rand(1, 5, d_model, requires_grad=True)  # Value matrix
+    
+Q = np.array([[1, 0, 1],[0, 1, 0]])
+K = np.array([[1, 0, 1],[0, 1, 0],[1, 1, 1]])
+V = np.array([[10, 0], [0, 10], [5, 5]])
 
-# Initialize attention
-attention = ScaledDotProductAttention(d_k=d_model)
+scaled_dot_production(Q, K, V)
 
-# Forward pass
-output, attention_weights = attention(Q, K, V)
 
-# Loss and backward pass
-loss = output.mean()
-loss.backward()  # Calculate gradients for Q, K, V
-
-# Display gradients
-print("Gradient of Q:", Q.grad)
-print("Gradient of K:", K.grad)
-print("Gradient of V:", V.grad)
-"""
-
-input_ids = torch.randint(0, 10000, (1, 20))
-print(input_ids)
